@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+  nestjs:
+    image: rest-api-watches-development
+    environment:
+      - NODE_ENV=development
+    restart: always
+    build:
+      context: .
+      dockerfile: development.Dockerfile
+    volumes:
+      - ./src:/usr/src/rest-watches/src
+      - ./logs:/usr/src/rest-watches/logs
+    ports:
+      - 3000:3000
+    depends_on:
+      - postgresql-master
+      - postgresql-slave
+    networks:
+      - rest_network
+  postgresql-master:
+    image: bitnami/postgresql:latest
+    ports: 
+      - 5432
+    environment: 
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl-user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl-password
+      - POSTGRESQL_USERNAME=pg-user
+      - POSTGRESQL_PASSWORD=pg-password
+      - POSTGRESQL_DATABASE=pg-main
+    volumes:
+      - pg_master_data:/bitnami/postgresql
+    networks: 
+      - rest_network
+  postgresql-slave:
+    image: bitnami/postgresql:latest
+    ports: 
+      - 5432
+    depends_on:
+      - postgresql-master
+    environment: 
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl-user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl-password
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_PASSWORD=pg-password
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+    networks: 
+      - rest_network
+volumes:
+  pg_master_data:
+networks:
+  rest_network:
+    driver: bridge
