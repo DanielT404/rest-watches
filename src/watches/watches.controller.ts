@@ -1,4 +1,3 @@
-import { Response } from 'express';
 import {
   ParseIntPipe,
   Controller,
@@ -8,9 +7,9 @@ import {
   Patch,
   Param,
   Delete,
-  Res,
   HttpStatus,
-  Query
+  Query,
+  HttpException
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
@@ -52,34 +51,31 @@ export class WatchesController {
     description: 'Query or server error.'
   })
   @Post()
-  async create(@Body() createWatchDto: CreateWatchDto, @Res() res: Response) {
+  async create(@Body() createWatchDto: CreateWatchDto) {
     const exists = await this.watchesService.exists(
       createWatchDto as ExistsWatchDto
     );
     if (exists) {
-      return res.status(HttpStatus.CONFLICT).json({
-        success: false,
-        message: `The watch you're trying to add already exists, please try again.`
-      });
+      throw new HttpException(
+        "The watch you're trying to find already exists, please try again.",
+        HttpStatus.CONFLICT
+      );
     }
-
     try {
       await this.watchesService.create(createWatchDto);
-      return res.status(HttpStatus.CREATED).json({
-        success: true,
+      return {
         message: 'A new watch has been added succesfully.'
-      });
+      };
     } catch (err) {
       this.routeLoggingService.setCustomMessage('create() route handling');
       this.routeLoggingService.setPayload(createWatchDto);
       this.routeLoggingService.setErrorStack(err.stack);
       this.routeLoggingService.setErrorMessage(err.message);
       this.routeLoggingService.log();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          'Something went wrong on our side while trying to create the resource.'
-      });
+      throw new HttpException(
+        'Something went wrong on our side while trying to create the resource.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -114,7 +110,6 @@ export class WatchesController {
   })
   @Get()
   async findAll(
-    @Res() res: Response,
     @Query('page')
     page?: number,
     @Query('limit')
@@ -127,22 +122,20 @@ export class WatchesController {
       };
       const watches = await this.watchesService.findAll(paginationOptions);
       const totalWatchCount = await this.watchesService.count();
-      return res.status(HttpStatus.OK).json({
-        success: true,
-        watches,
+      return {
         count: watches.length,
-        number_of_pages: Math.ceil(totalWatchCount / paginationOptions.limit)
-      });
+        number_of_pages: Math.ceil(totalWatchCount / paginationOptions.limit),
+        watches
+      };
     } catch (err) {
       this.routeLoggingService.setCustomMessage('findAll() route handler call');
       this.routeLoggingService.setErrorStack(err.stack);
       this.routeLoggingService.setErrorMessage(err.message);
       this.routeLoggingService.log();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          'Something went wrong on our side while trying to find the resource.'
-      });
+      throw new HttpException(
+        'Something went wrong on our side while trying to find the resource.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -150,6 +143,10 @@ export class WatchesController {
   @ApiResponse({
     status: HttpStatus.TOO_MANY_REQUESTS,
     description: 'Too many requests.'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_ACCEPTABLE,
+    description: 'id must be of type integer.'
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -165,7 +162,6 @@ export class WatchesController {
   })
   @Get(':id')
   async findOne(
-    @Res() res: Response,
     @Param(
       'id',
       new ParseIntPipe({
@@ -174,31 +170,11 @@ export class WatchesController {
     )
     id: number
   ) {
-    try {
-      const watch = await this.watchesService.findOne(id);
-      if (watch === null) {
-        return res.status(HttpStatus.NOT_FOUND).json({
-          success: false,
-          message: 'Watch not found.'
-        });
-      }
-      return res.status(HttpStatus.OK).json({
-        success: true,
-        watch
-      });
-    } catch (err) {
-      this.routeLoggingService.setCustomMessage(
-        `findOne() route handler call with id ${id}`
-      );
-      this.routeLoggingService.setErrorStack(err.stack);
-      this.routeLoggingService.setErrorMessage(err.message);
-      this.routeLoggingService.log();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          'Something went wrong on our side while trying to fetch the resource.'
-      });
+    const watch = await this.watchesService.findOne(id);
+    if (watch === null) {
+      throw new HttpException('Watch not found.', HttpStatus.NOT_FOUND);
     }
+    return watch;
   }
 
   @ApiOperation({ summary: 'Update an existing watch' })
@@ -228,7 +204,6 @@ export class WatchesController {
   })
   @Patch(':id')
   async update(
-    @Res() res: Response,
     @Param(
       'id',
       new ParseIntPipe({
@@ -239,25 +214,19 @@ export class WatchesController {
     @Body() updateWatchDto: UpdateWatchDto
   ) {
     if (JSON.stringify(updateWatchDto) === '{}') {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        success: false,
-        message: 'Request body is empty.'
-      });
+      throw new HttpException('Request body is empty.', HttpStatus.BAD_REQUEST);
     }
     const watch = await this.watchesService.findOne(id);
     if (watch === null) {
-      return res.status(HttpStatus.NOT_FOUND).json({
-        success: false,
-        message: 'Watch not found.'
-      });
+      throw new HttpException('Watch not found.', HttpStatus.NOT_FOUND);
     }
 
     try {
       await this.watchesService.update(id, updateWatchDto);
-      return res.status(HttpStatus.OK).json({
-        success: true,
-        message: 'Watch has been updated succesfully.'
-      });
+      return {
+        message: 'Watch has been updated succesfully.',
+        updateWatchDto
+      };
     } catch (err) {
       this.routeLoggingService.setCustomMessage(
         `update() route handler call with id ${id}`
@@ -266,11 +235,10 @@ export class WatchesController {
       this.routeLoggingService.setErrorStack(err.stack);
       this.routeLoggingService.setErrorMessage(err.message);
       this.routeLoggingService.log();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          'Something went wrong on our side while trying to update the resource.'
-      });
+      throw new HttpException(
+        'Something went wrong on our side while trying to update the resource.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -297,7 +265,6 @@ export class WatchesController {
   })
   @Delete(':id')
   async remove(
-    @Res() res: Response,
     @Param(
       'id',
       new ParseIntPipe({
@@ -307,18 +274,15 @@ export class WatchesController {
     id: number
   ) {
     const watch = await this.watchesService.findOne(id);
-    if (watch === null)
-      return res.status(HttpStatus.NOT_FOUND).json({
-        success: false,
-        message: 'Watch not found.'
-      });
+    if (watch === null) {
+      throw new HttpException('Watch not found.', HttpStatus.NOT_FOUND);
+    }
 
     try {
       await this.watchesService.remove(id);
-      return res.status(HttpStatus.OK).json({
-        success: true,
+      return {
         message: 'Watch has been deleted succesfully.'
-      });
+      };
     } catch (err) {
       this.routeLoggingService.setCustomMessage(
         `remove() route handler call with id ${id}`
@@ -326,11 +290,10 @@ export class WatchesController {
       this.routeLoggingService.setErrorStack(err.stack);
       this.routeLoggingService.setErrorMessage(err.message);
       this.routeLoggingService.log();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          'Something went wrong on our side while trying to delete the resource.'
-      });
+      throw new HttpException(
+        'Something went wrong on our side while trying to delete the resource.',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 }
