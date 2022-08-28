@@ -2,33 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
-import * as winston from 'winston';
-import { WinstonModule } from 'nest-winston';
-
 import { WatchesModule } from './watches/watches.module';
 
 @Module({
   imports: [
-    WinstonModule.forRoot({
-      level: 'error',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.prettyPrint()
-      ),
-      defaultMeta: { service: 'rest-api' },
-      transports: [
-        new winston.transports.File({
-          dirname: 'logs',
-          filename: 'error.log',
-          level: 'error'
-        }),
-        new winston.transports.File({
-          dirname: 'logs',
-          filename: 'combined.log',
-          level: 'http'
-        })
-      ]
-    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       connectTimeoutMS: process.env.PG_CONNECTION_TIMEOUT_MS
