@@ -15,8 +15,6 @@ services:
       - rest_network
   postgresql-master:
     image: bitnami/postgresql:latest
-    ports: 
-      - 5432
     environment: 
       - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_REPLICATION_USER=repl-user
@@ -30,8 +28,6 @@ services:
       - rest_network
   postgresql-slave:
     image: bitnami/postgresql:latest
-    ports: 
-      - 5432
     depends_on:
       - postgresql-master
     environment: 
