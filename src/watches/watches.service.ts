@@ -15,7 +15,7 @@ export class WatchesService {
     private watchRepository: Repository<Watch>
   ) {}
 
-  async findAll(options?: Pagination): Promise<Watch[]> {
+  async findAll(options: Pagination): Promise<Watch[]> {
     const paginationOptions: Pagination & OffsetPagination = {
       page: options.page,
       limit: options.limit,
