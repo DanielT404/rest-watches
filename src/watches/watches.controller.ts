@@ -1,5 +1,3 @@
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
 import { Response } from 'express';
 import {
   ParseIntPipe,
@@ -12,7 +10,6 @@ import {
   Delete,
   Res,
   HttpStatus,
-  Inject,
   Query
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -21,14 +18,15 @@ import { WatchesService } from 'src/watches/watches.service';
 import { CreateWatchDto } from 'src/watches/dto/create-watch.dto';
 import { ExistsWatchDto } from 'src/watches/dto/exists-watch.dto';
 import { UpdateWatchDto } from 'src/watches/dto/update-watch.dto';
+
+import { RouteLoggingService } from 'src/utils/logging/RouteLoggingService';
 import { Pagination } from 'src/utils/types/Pagination';
 
 @ApiTags('watches')
 @Controller('watches')
 export class WatchesController {
   constructor(
-    @Inject(WINSTON_MODULE_PROVIDER)
-    private readonly logger: Logger,
+    private readonly routeLoggingService: RouteLoggingService,
     private readonly watchesService: WatchesService
   ) {}
 
@@ -72,15 +70,11 @@ export class WatchesController {
         message: 'A new watch has been added succesfully.'
       });
     } catch (err) {
-      this.logger.log(
-        'error',
-        `${
-          HttpStatus.INTERNAL_SERVER_ERROR
-        } response on create() route handler call with payload: \n ${JSON.stringify(
-          createWatchDto
-        )} \n Err stack: ${err.stack} \n Err message: ${err.message}`,
-        WatchesController.name
-      );
+      this.routeLoggingService.setCustomMessage('create() route handling');
+      this.routeLoggingService.setPayload(createWatchDto);
+      this.routeLoggingService.setErrorStack(err.stack);
+      this.routeLoggingService.setErrorMessage(err.message);
+      this.routeLoggingService.log();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
@@ -140,11 +134,10 @@ export class WatchesController {
         number_of_pages: Math.ceil(totalWatchCount / paginationOptions.limit)
       });
     } catch (err) {
-      this.logger.log(
-        'error',
-        `${HttpStatus.INTERNAL_SERVER_ERROR} response on findAll() route handler call \n Err stack: ${err.stack} | ${err.message} \n`,
-        WatchesController.name
-      );
+      this.routeLoggingService.setCustomMessage('findAll() route handler call');
+      this.routeLoggingService.setErrorStack(err.stack);
+      this.routeLoggingService.setErrorMessage(err.message);
+      this.routeLoggingService.log();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
@@ -194,11 +187,12 @@ export class WatchesController {
         watch
       });
     } catch (err) {
-      this.logger.log(
-        'error',
-        `${HttpStatus.INTERNAL_SERVER_ERROR} response on findOne() route handler call with id ${id} \n Err stack: ${err.stack} \n Err message: ${err.message}`,
-        WatchesController.name
+      this.routeLoggingService.setCustomMessage(
+        `findOne() route handler call with id ${id}`
       );
+      this.routeLoggingService.setErrorStack(err.stack);
+      this.routeLoggingService.setErrorMessage(err.message);
+      this.routeLoggingService.log();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
@@ -265,11 +259,13 @@ export class WatchesController {
         message: 'Watch has been updated succesfully.'
       });
     } catch (err) {
-      this.logger.log(
-        'error',
-        `${HttpStatus.INTERNAL_SERVER_ERROR} response on update() route handler call with id ${id} \n Err stack: ${err.stack} \n Err message: ${err.message}`,
-        WatchesController.name
+      this.routeLoggingService.setCustomMessage(
+        `update() route handler call with id ${id}`
       );
+      this.routeLoggingService.setPayload(updateWatchDto);
+      this.routeLoggingService.setErrorStack(err.stack);
+      this.routeLoggingService.setErrorMessage(err.message);
+      this.routeLoggingService.log();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
@@ -324,11 +320,12 @@ export class WatchesController {
         message: 'Watch has been deleted succesfully.'
       });
     } catch (err) {
-      this.logger.log(
-        'error',
-        `${HttpStatus.INTERNAL_SERVER_ERROR} response on remove() route handler call with id ${id} \n Err stack: ${err.stack} \n Err message: ${err.message}`,
-        WatchesController.name
+      this.routeLoggingService.setCustomMessage(
+        `remove() route handler call with id ${id}`
       );
+      this.routeLoggingService.setErrorStack(err.stack);
+      this.routeLoggingService.setErrorMessage(err.message);
+      this.routeLoggingService.log();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
