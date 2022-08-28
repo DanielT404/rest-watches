@@ -1,5 +1,6 @@
 import * as winston from 'winston';
 import { WinstonModule } from 'nest-winston';
+import { DataSource } from 'typeorm';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -100,4 +101,6 @@ import { WatchesService } from './watches.service';
     }
   ]
 })
-export class WatchesModule {}
+export class WatchesModule {
+  constructor(private dataSource: DataSource) {}
+}
